@@ -1,8 +1,7 @@
 program pingpong
 
   use mpi
-
-  USE IFPORT
+  use ifport ! Intel fortran specific
 
   implicit none
 
