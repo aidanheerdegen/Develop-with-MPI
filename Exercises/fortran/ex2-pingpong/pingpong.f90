@@ -16,6 +16,8 @@ program pingpong
   integer, parameter :: tag = 1, ping = 0, pong = 1
   integer, dimension(MPI_STATUS_SIZE) :: status
 
+  real*8 timer
+
   call mpi_init(ierr)
 
   call mpi_comm_rank(MPI_COMM_WORLD, rank, ierr)
@@ -32,25 +34,29 @@ program pingpong
     if (rank == proc1) then
       ! Send a ping to proc2
       sendbuf = ping
+      timer = laptime()
       call mpi_send(sendbuf, 1, MPI_INTEGER, proc2, tag, MPI_COMM_WORLD, ierr)
       ! Wait for pong from proc2
       call mpi_recv(recvbuf, 1, MPI_INTEGER, proc2, tag, MPI_COMM_WORLD, status, ierr)
+      timer = laptime()
       if (recvbuf /= pong) then
         stop 'proc1 received incorrect message'
       else
-        print *,i,'proc1 received pong'
+        print *,timer,i,'proc1 received pong'
       end if
       call sleep(hold_time)
     elseif (rank == proc2) then
       ! Send a pong to proc1
       sendbuf = pong
+      timer = laptime()
       call mpi_send(sendbuf, 1, MPI_INTEGER, proc1, tag, MPI_COMM_WORLD, ierr)
       ! Wait for pong from proc2
       call mpi_recv(recvbuf, 1, MPI_INTEGER, proc1, tag, MPI_COMM_WORLD, status, ierr)
+      timer = laptime()
       if (recvbuf /= ping) then
         stop 'proc2 received incorrect message'
       else
-        print *,i,'proc2 received ping'
+        print *,timer,i,'proc2 received ping'
       end if
       call sleep(hold_time)
     end if
@@ -58,5 +64,29 @@ program pingpong
   end do
 
   call mpi_finalize(ierr)
+
+contains
+
+  real*8 function laptime(restart)
+
+    ! Interface variables
+    logical, optional :: restart
+
+    logical, save :: timing = .false.
+    real(kind=8), save ::  start, finish
+
+    if (.not. timing) then
+      start  = MPI_Wtime()
+      timing = .true.
+      laptime = 0.
+    else
+      finish = MPI_Wtime()
+      laptime = finish - start
+      if (present(restart) .and. restart) then
+        start  = MPI_Wtime()
+      end if
+    end if
+
+  end function laptime
 
 end program pingpong
